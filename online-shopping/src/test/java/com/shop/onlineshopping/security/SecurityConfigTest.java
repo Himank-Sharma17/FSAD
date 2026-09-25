@@ -55,4 +55,11 @@ class SecurityConfigTest {
                         .header("Authorization", "Bearer not-a-jwt"))
                 .andExpect(status().is4xxClientError());
     }
+
+    @Test
+    void authenticatedRoute_customerToken_passesSecurity_returns404() throws Exception {
+        mockMvc.perform(get("/api/orders")
+                        .header("Authorization", "Bearer " + tokenFor(Role.CUSTOMER)))
+                .andExpect(status().isNotFound());
+    }
 }

@@ -29,12 +29,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring(7);
-            if (jwtService.isValid(token)) {
-                String email = jwtService.extractEmail(token);
-                String role = jwtService.extractRole(token);
-                var auth = new UsernamePasswordAuthenticationToken(
-                        email, null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
-                SecurityContextHolder.getContext().setAuthentication(auth);
+            try {
+                if (jwtService.isValid(token)) {
+                    String email = jwtService.extractEmail(token);
+                    String role = jwtService.extractRole(token);
+                    var auth = new UsernamePasswordAuthenticationToken(
+                            email, null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
+            } catch (Exception e) {
+                // malformed/invalid token → leave unauthenticated; authorization layer decides
             }
         }
         chain.doFilter(request, response);
