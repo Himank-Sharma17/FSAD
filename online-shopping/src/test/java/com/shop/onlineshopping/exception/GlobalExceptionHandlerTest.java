@@ -33,17 +33,4 @@ class GlobalExceptionHandlerTest {
         assertThat(body.status()).isEqualTo(409);
         assertThat(body.path()).isEqualTo("/api/auth/register");
     }
-
-    @Test
-    void handleGeneric_returns500WithCorrectBody() {
-        RuntimeException ex = new RuntimeException("boom");
-
-        ResponseEntity<ApiError> response = handler.handleGeneric(ex, req);
-
-        assertThat(response.getStatusCode().value()).isEqualTo(500);
-        ApiError body = response.getBody();
-        assertThat(body).isNotNull();
-        assertThat(body.status()).isEqualTo(500);
-        assertThat(body.path()).isEqualTo("/api/auth/register");
-    }
 }
