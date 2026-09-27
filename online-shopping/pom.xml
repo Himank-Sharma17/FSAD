@@ -82,6 +82,12 @@
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
 			<version>3.1.1</version>
 		</dependency>
+		<!-- Stripe SDK: Checkout Session creation + webhook signature verification -->
+		<dependency>
+			<groupId>com.stripe</groupId>
+			<artifactId>stripe-java</artifactId>
+			<version>33.4.2</version>
+		</dependency>
 		<!-- In-memory DB for tests -->
 		<dependency>
 			<groupId>com.h2database</groupId>
