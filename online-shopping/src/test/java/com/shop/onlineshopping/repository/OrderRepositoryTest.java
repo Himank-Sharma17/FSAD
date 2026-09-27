@@ -9,6 +9,7 @@ import com.shop.onlineshopping.entity.Role;
 import com.shop.onlineshopping.entity.User;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -26,6 +27,7 @@ class OrderRepositoryTest {
     @Autowired OrderRepository orderRepository;
     @Autowired UserRepository userRepository;
     @Autowired ProductRepository productRepository;
+    @Autowired TestEntityManager em;
 
     private User newUser(String email) {
         User u = new User();
@@ -69,6 +71,9 @@ class OrderRepositoryTest {
         newOrder(user, product, OrderStatus.PAID, "cs_old", Instant.now().minusSeconds(3600));
         newOrder(user, product, OrderStatus.PENDING_PAYMENT, "cs_new", Instant.now());
 
+        em.flush();
+        em.clear();
+
         List<Order> orders = orderRepository.findByUserOrderByOrderDateDesc(user);
 
         assertThat(orders).hasSize(2);
@@ -81,6 +86,9 @@ class OrderRepositoryTest {
         User user = newUser("session@shop.com");
         Product product = newProduct();
         newOrder(user, product, OrderStatus.PENDING_PAYMENT, "cs_lookup", Instant.now());
+
+        em.flush();
+        em.clear();
 
         Optional<Order> found = orderRepository.findByStripeSessionId("cs_lookup");
 
