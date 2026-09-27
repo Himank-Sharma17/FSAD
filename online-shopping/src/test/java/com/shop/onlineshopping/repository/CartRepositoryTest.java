@@ -9,6 +9,7 @@ import com.shop.onlineshopping.entity.User;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
@@ -23,6 +24,7 @@ class CartRepositoryTest {
     @Autowired CartRepository cartRepository;
     @Autowired UserRepository userRepository;
     @Autowired ProductRepository productRepository;
+    @Autowired TestEntityManager entityManager;
 
     private User newUser(String email) {
         User u = new User();
@@ -55,8 +57,9 @@ class CartRepositoryTest {
         item.setProduct(product);
         item.setQuantity(2);
         cart.getItems().add(item);
-        cartRepository.save(cart);
+        cartRepository.saveAndFlush(cart);
 
+        entityManager.clear();
         Optional<Cart> found = cartRepository.findByUser(user);
         assertThat(found).isPresent();
         assertThat(found.get().getItems()).hasSize(1);
@@ -76,11 +79,14 @@ class CartRepositoryTest {
         item.setProduct(product);
         item.setQuantity(1);
         cart.getItems().add(item);
-        Cart saved = cartRepository.saveAndFlush(cart);
+        cartRepository.saveAndFlush(cart);
 
-        saved.getItems().clear();
-        cartRepository.saveAndFlush(saved);
+        entityManager.clear();
+        Cart managed = cartRepository.findByUser(user).orElseThrow();
+        managed.getItems().clear();
+        cartRepository.saveAndFlush(managed);
 
+        entityManager.clear();
         Cart reloaded = cartRepository.findByUser(user).orElseThrow();
         assertThat(reloaded.getItems()).isEmpty();
     }
