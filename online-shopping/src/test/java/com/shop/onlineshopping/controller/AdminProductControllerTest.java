@@ -170,4 +170,15 @@ class AdminProductControllerTest {
                         .header("Authorization", "Bearer " + customerToken))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    void create_priceWithThreeDecimals_returns400() throws Exception {
+        ProductRequest bad = new ProductRequest("Bad", "x", new BigDecimal("9.999"), 5, Category.ELECTRONICS);
+        mockMvc.perform(post("/api/admin/products")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(bad)))
+                .andExpect(status().isBadRequest());
+        assertThat(productRepository.count()).isZero();
+    }
 }
