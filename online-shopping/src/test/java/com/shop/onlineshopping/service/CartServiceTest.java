@@ -20,6 +20,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.util.Optional;
 
+import org.mockito.ArgumentCaptor;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -124,5 +126,25 @@ class CartServiceTest {
         when(cartItemRepository.findById(404L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> cartService.removeItem(user(1L, "a@shop.com"), 404L))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void removeItem_owner_removesItem() {
+        User user = user(1L, "owner@shop.com");
+        Cart cart = new Cart();
+        cart.setId(10L);
+        cart.setUser(user);
+        CartItem item = new CartItem();
+        item.setId(77L);
+        item.setCart(cart);
+        cart.getItems().add(item);
+
+        when(cartItemRepository.findById(77L)).thenReturn(Optional.of(item));
+        ArgumentCaptor<Cart> captor = ArgumentCaptor.forClass(Cart.class);
+        when(cartRepository.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+        cartService.removeItem(user, 77L);
+
+        assertThat(captor.getValue().getItems()).isEmpty();
     }
 }
