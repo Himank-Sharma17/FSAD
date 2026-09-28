@@ -13,6 +13,7 @@ import com.shop.onlineshopping.repository.UserRepository;
 import com.shop.onlineshopping.service.CartService;
 import com.shop.onlineshopping.service.JwtService;
 import com.shop.onlineshopping.service.StripeGateway;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,6 +63,15 @@ class CheckoutControllerTest {
         customer = newUser("checkout@shop.com");
         product = newProduct(5);
         customerToken = jwtService.generateToken(customer);
+    }
+
+    @AfterEach
+    void tearDown() {
+        orderRepository.deleteAll();
+        cartItemRepository.deleteAll();
+        cartRepository.deleteAll();
+        productRepository.deleteAll();
+        userRepository.deleteAll();
     }
 
     private User newUser(String email) {
