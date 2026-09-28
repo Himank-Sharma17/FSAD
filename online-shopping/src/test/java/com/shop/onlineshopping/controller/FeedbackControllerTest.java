@@ -115,4 +115,15 @@ class FeedbackControllerTest {
                 .andExpect(status().isBadRequest());
         assertThat(feedbackRepository.count()).isZero();
     }
+
+    @Test
+    void submit_messageTooLong_returns400() throws Exception {
+        String tooLong = "x".repeat(2001);
+        mockMvc.perform(post("/api/feedback")
+                        .header("Authorization", "Bearer " + customerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(new FeedbackRequest(tooLong, 3))))
+                .andExpect(status().isBadRequest());
+        assertThat(feedbackRepository.count()).isZero();
+    }
 }
