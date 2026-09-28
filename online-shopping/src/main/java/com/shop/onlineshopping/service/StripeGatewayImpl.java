@@ -62,16 +62,15 @@ public class StripeGatewayImpl implements StripeGateway {
         try {
             Event event = Webhook.constructEvent(payload, signature, webhookSecret);
             EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
-            // getObject() is empty when the event's API version differs from the SDK's;
-            // fall back to deserializeUnsafe() to still read the session id.
-            StripeObject stripeObject = deserializer.getObject()
-                    .orElseGet(() -> {
-                        try {
-                            return deserializer.deserializeUnsafe();
-                        } catch (com.stripe.exception.EventDataObjectDeserializationException ex) {
-                            throw new WebhookVerificationException("Failed to deserialize webhook event");
-                        }
-                    });
+            // Use deserializeUnsafe() directly: getObject() NPEs when the event's api_version
+            // is absent (e.g. test payloads), and deserializeUnsafe() works regardless of
+            // whether the payload's api_version matches the SDK's pinned version.
+            StripeObject stripeObject;
+            try {
+                stripeObject = deserializer.deserializeUnsafe();
+            } catch (com.stripe.exception.EventDataObjectDeserializationException ex) {
+                throw new WebhookVerificationException("Failed to deserialize webhook event");
+            }
             if (stripeObject instanceof Session session) {
                 return session.getId();
             }
