@@ -114,4 +114,12 @@ class ProductControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404));
     }
+
+    @Test
+    void listProducts_defaultsSortedByIdAscending() throws Exception {
+        mockMvc.perform(get("/api/products").header("Authorization", bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].name").value("Laptop"))
+                .andExpect(jsonPath("$.content[2].name").value("Lipstick"));
+    }
 }

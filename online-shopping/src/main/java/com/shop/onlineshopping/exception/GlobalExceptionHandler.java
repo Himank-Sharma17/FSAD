@@ -52,6 +52,26 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, message, req);
     }
 
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<ApiError> handleInsufficientStock(InsufficientStockException ex, HttpServletRequest req) {
+        return build(HttpStatus.CONFLICT, ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ApiError> handleUnauthorized(UnauthorizedException ex, HttpServletRequest req) {
+        return build(HttpStatus.FORBIDDEN, ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(EmptyCartException.class)
+    public ResponseEntity<ApiError> handleEmptyCart(EmptyCartException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(WebhookVerificationException.class)
+    public ResponseEntity<ApiError> handleWebhookVerification(WebhookVerificationException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), req);
+    }
+
     private ResponseEntity<ApiError> build(HttpStatus status, String message, HttpServletRequest req) {
         ApiError body = new ApiError(Instant.now(), status.value(), status.getReasonPhrase(),
                 message, req.getRequestURI());

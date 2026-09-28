@@ -64,4 +64,14 @@ class ProductRepositoryTest {
         assertThat(found.getPrice()).isEqualByComparingTo("9.99");
         assertThat(found.getQoh()).isEqualTo(10);
     }
+
+    @Test
+    void version_isAssignedOnSaveAndIncrementsOnUpdate() {
+        Product saved = productRepository.saveAndFlush(newProduct("Laptop", Category.ELECTRONICS));
+        assertThat(saved.getVersion()).isEqualTo(0L);
+
+        saved.setQoh(3);
+        Product updated = productRepository.saveAndFlush(saved);
+        assertThat(updated.getVersion()).isEqualTo(1L);
+    }
 }
