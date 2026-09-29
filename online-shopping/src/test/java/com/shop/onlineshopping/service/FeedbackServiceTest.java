@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
 class FeedbackServiceTest {
 
     @Mock FeedbackRepository feedbackRepository;
+    @Mock NotificationService notificationService;
     @InjectMocks FeedbackService feedbackService;
 
     private User user(Long id, String email) {
@@ -55,6 +56,20 @@ class FeedbackServiceTest {
         assertThat(response.id()).isEqualTo(99L);
         assertThat(response.userEmail()).isEqualTo("fb@shop.com");
         assertThat(response.rating()).isEqualTo(5);
+    }
+
+    @Test
+    void submit_pushesFeedbackNotification() {
+        User user = user(1L, "fb@shop.com");
+        when(feedbackRepository.save(any(Feedback.class))).thenAnswer(inv -> {
+            Feedback f = inv.getArgument(0);
+            f.setId(42L);
+            return f;
+        });
+
+        feedbackService.submit(user, new FeedbackRequest("Great store", 5));
+
+        verify(notificationService).notifyNewFeedback(any(FeedbackResponse.class));
     }
 
     @Test

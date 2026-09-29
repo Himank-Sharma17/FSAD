@@ -18,9 +18,12 @@ public class FeedbackService {
     private static final Logger log = LoggerFactory.getLogger(FeedbackService.class);
 
     private final FeedbackRepository feedbackRepository;
+    private final NotificationService notificationService;
 
-    public FeedbackService(FeedbackRepository feedbackRepository) {
+    public FeedbackService(FeedbackRepository feedbackRepository,
+                           NotificationService notificationService) {
         this.feedbackRepository = feedbackRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -31,7 +34,9 @@ public class FeedbackService {
         feedback.setRating(request.rating());
         Feedback saved = feedbackRepository.save(feedback);
         log.info("Feedback {} submitted by user {}", saved.getId(), user.getId());
-        return FeedbackResponse.from(saved);
+        FeedbackResponse response = FeedbackResponse.from(saved);
+        notificationService.notifyNewFeedback(response);
+        return response;
     }
 
     @Transactional(readOnly = true)
