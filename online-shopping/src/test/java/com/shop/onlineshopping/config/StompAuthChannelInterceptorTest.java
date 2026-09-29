@@ -9,6 +9,7 @@ import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.util.List;
@@ -51,6 +52,10 @@ class StompAuthChannelInterceptorTest {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(out);
         assertThat(accessor.getUser()).isNotNull();
         assertThat(accessor.getUser().getName()).isEqualTo("admin@shop.com");
+        assertThat(accessor.getUser()).isInstanceOf(UsernamePasswordAuthenticationToken.class);
+        assertThat(((UsernamePasswordAuthenticationToken) accessor.getUser()).getAuthorities())
+                .extracting(GrantedAuthority::getAuthority)
+                .containsExactly("ROLE_ADMIN");
     }
 
     @Test
@@ -77,5 +82,13 @@ class StompAuthChannelInterceptorTest {
         assertThatThrownBy(() ->
                 interceptor.preSend(subscribeMessage("/topic/admin/orders", "CUSTOMER"), channel))
                 .isInstanceOf(MessagingException.class);
+    }
+
+    @Test
+    void preSend_sendFrame_passesThrough() {
+        StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.SEND);
+        accessor.setDestination("/app/chat");
+        Message<byte[]> msg = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+        assertThat(interceptor.preSend(msg, channel)).isSameAs(msg);
     }
 }
