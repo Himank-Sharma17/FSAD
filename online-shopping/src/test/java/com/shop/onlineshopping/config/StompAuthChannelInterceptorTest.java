@@ -12,7 +12,9 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -90,5 +92,35 @@ class StompAuthChannelInterceptorTest {
         accessor.setDestination("/app/chat");
         Message<byte[]> msg = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
         assertThat(interceptor.preSend(msg, channel)).isSameAs(msg);
+    }
+
+    // --- Session-attributes fallback path (no setUser; exercises the new retrieval logic) ---
+
+    private Message<byte[]> subscribeMessageViaSessionAttrs(String destination, String role) {
+        StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.SUBSCRIBE);
+        accessor.setDestination(destination);
+        // Do NOT call setUser — mimic the real STOMP flow where Spring does not auto-propagate
+        // the CONNECT principal to subsequent frames.  Instead, populate session attributes the
+        // same way StompAuthChannelInterceptor.authenticate() does.
+        Map<String, Object> attrs = new HashMap<>();
+        attrs.put("STOMP_PRINCIPAL",
+                new UsernamePasswordAuthenticationToken(
+                        "u@shop.com", null, List.of(new SimpleGrantedAuthority("ROLE_" + role))));
+        accessor.setSessionAttributes(attrs);
+        return MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+    }
+
+    @Test
+    void preSend_subscribeAdminTopicAsAdmin_viaSessionAttrs_allowed() {
+        Message<?> out = interceptor.preSend(
+                subscribeMessageViaSessionAttrs("/topic/admin/orders", "ADMIN"), channel);
+        assertThat(out).isNotNull();
+    }
+
+    @Test
+    void preSend_subscribeAdminTopicAsCustomer_viaSessionAttrs_denied() {
+        assertThatThrownBy(() -> interceptor.preSend(
+                subscribeMessageViaSessionAttrs("/topic/admin/orders", "CUSTOMER"), channel))
+                .isInstanceOf(MessagingException.class);
     }
 }

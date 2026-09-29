@@ -1,6 +1,8 @@
 package com.shop.onlineshopping.config;
 
 import com.shop.onlineshopping.service.JwtService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessagingException;
@@ -21,7 +23,9 @@ import java.util.Map;
 @Component
 public class StompAuthChannelInterceptor implements ChannelInterceptor {
 
-    static final String SESSION_PRINCIPAL_KEY = "STOMP_PRINCIPAL";
+    private static final Logger log = LoggerFactory.getLogger(StompAuthChannelInterceptor.class);
+
+    private static final String SESSION_PRINCIPAL_KEY = "STOMP_PRINCIPAL";
 
     private static final String ADMIN_TOPIC_PREFIX = "/topic/admin/";
 
@@ -73,6 +77,9 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
                 SimpMessageHeaderAccessor.getSessionAttributes(newAccessor.getMessageHeaders());
         if (sessionAttributes != null) {
             sessionAttributes.put(SESSION_PRINCIPAL_KEY, principal);
+        } else {
+            log.warn("STOMP session attributes unavailable at CONNECT; cannot store principal for session {}",
+                    accessor.getSessionId());
         }
 
         return MessageBuilder.createMessage(message.getPayload(), newAccessor.getMessageHeaders());
@@ -91,7 +98,8 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
             Map<String, Object> attrs =
                     SimpMessageHeaderAccessor.getSessionAttributes(accessor.getMessageHeaders());
             if (attrs != null) {
-                user = (Principal) attrs.get(SESSION_PRINCIPAL_KEY);
+                Object raw = attrs.get(SESSION_PRINCIPAL_KEY);
+                if (raw instanceof Principal p) { user = p; }
             }
         }
         if (!(user instanceof UsernamePasswordAuthenticationToken auth)
