@@ -27,15 +27,18 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final CartService cartService;
     private final EmailService emailService;
+    private final NotificationService notificationService;
 
     public OrderService(OrderRepository orderRepository,
                         ProductRepository productRepository,
                         CartService cartService,
-                        EmailService emailService) {
+                        EmailService emailService,
+                        NotificationService notificationService) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.cartService = cartService;
         this.emailService = emailService;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -53,20 +56,23 @@ public class OrderService {
 
         for (OrderItem item : order.getItems()) {
             Product product = item.getProduct();
-            int newQoh = product.getQoh() - item.getQuantity();
+            int previousQoh = product.getQoh();
+            int newQoh = previousQoh - item.getQuantity();
             if (newQoh < 0) {
                 log.warn("QOH for product {} would go negative ({} - {}); clamping to 0",
-                        product.getId(), product.getQoh(), item.getQuantity());
+                        product.getId(), previousQoh, item.getQuantity());
                 newQoh = 0;
             }
             product.setQoh(newQoh);
             productRepository.save(product);
+            notificationService.notifyLowStockIfCrossed(product, previousQoh);
         }
 
         order.setStatus(OrderStatus.PAID);
         orderRepository.save(order);
         cartService.clearCart(order.getUser());
         emailService.sendOrderConfirmation(order);
+        notificationService.notifyNewOrder(order);
         log.info("Order {} marked PAID", order.getId());
     }
 

@@ -33,6 +33,7 @@ class OrderServiceTest {
     @Mock ProductRepository productRepository;
     @Mock CartService cartService;
     @Mock EmailService emailService;
+    @Mock NotificationService notificationService;
     @InjectMocks OrderService orderService;
 
     private User user(Long id) {
@@ -139,5 +140,28 @@ class OrderServiceTest {
         orderService.deleteOrder(user, 1L);
 
         verify(orderRepository).delete(order);
+    }
+
+    @Test
+    void markOrderPaid_pushesNewOrderNotification() {
+        User user = user(1L);
+        Order order = pendingOrder(user, 5, 2);
+        when(orderRepository.findByStripeSessionId("cs_test_123")).thenReturn(Optional.of(order));
+
+        orderService.markOrderPaid("cs_test_123");
+
+        verify(notificationService).notifyNewOrder(order);
+    }
+
+    @Test
+    void markOrderPaid_pushesLowStockWithPreviousQoh() {
+        User user = user(1L);
+        Order order = pendingOrder(user, 6, 2); // qoh 6 -> 4, previous 6
+        when(orderRepository.findByStripeSessionId("cs_test_123")).thenReturn(Optional.of(order));
+
+        orderService.markOrderPaid("cs_test_123");
+
+        // previousQoh passed is the value before decrement (6); NotificationService decides crossing
+        verify(notificationService).notifyLowStockIfCrossed(order.getItems().get(0).getProduct(), 6);
     }
 }
