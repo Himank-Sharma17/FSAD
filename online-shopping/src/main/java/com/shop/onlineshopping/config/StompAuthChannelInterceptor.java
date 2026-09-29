@@ -4,6 +4,7 @@ import com.shop.onlineshopping.service.JwtService;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessagingException;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
@@ -15,9 +16,12 @@ import org.springframework.stereotype.Component;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 
 @Component
 public class StompAuthChannelInterceptor implements ChannelInterceptor {
+
+    static final String SESSION_PRINCIPAL_KEY = "STOMP_PRINCIPAL";
 
     private static final String ADMIN_TOPIC_PREFIX = "/topic/admin/";
 
@@ -55,9 +59,22 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
         String email = jwtService.extractEmail(token);
         String role = jwtService.extractRole(token);
 
+        UsernamePasswordAuthenticationToken principal = new UsernamePasswordAuthenticationToken(
+                email, null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
+
         StompHeaderAccessor newAccessor = StompHeaderAccessor.wrap(message);
-        newAccessor.setUser(new UsernamePasswordAuthenticationToken(
-                email, null, List.of(new SimpleGrantedAuthority("ROLE_" + role))));
+        newAccessor.setUser(principal);
+
+        // Spring does not auto-propagate the CONNECT-frame principal to subsequent STOMP
+        // frames (session.getPrincipal() stays null for JWT-only auth).  Store the principal
+        // in the session-attributes map — which IS shared across all frames in this session —
+        // so that authorizeSubscription() can retrieve it.
+        Map<String, Object> sessionAttributes =
+                SimpMessageHeaderAccessor.getSessionAttributes(newAccessor.getMessageHeaders());
+        if (sessionAttributes != null) {
+            sessionAttributes.put(SESSION_PRINCIPAL_KEY, principal);
+        }
+
         return MessageBuilder.createMessage(message.getPayload(), newAccessor.getMessageHeaders());
     }
 
@@ -66,7 +83,17 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
         if (destination == null || !destination.startsWith(ADMIN_TOPIC_PREFIX)) {
             return;
         }
+        // accessor.getUser() is null for SUBSCRIBE frames when auth was done via STOMP CONNECT
+        // headers (as opposed to the HTTP handshake).  Fall back to the principal stored in the
+        // session attributes by authenticate().
         Principal user = accessor.getUser();
+        if (user == null) {
+            Map<String, Object> attrs =
+                    SimpMessageHeaderAccessor.getSessionAttributes(accessor.getMessageHeaders());
+            if (attrs != null) {
+                user = (Principal) attrs.get(SESSION_PRINCIPAL_KEY);
+            }
+        }
         if (!(user instanceof UsernamePasswordAuthenticationToken auth)
                 || auth.getAuthorities().stream()
                         .noneMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
