@@ -20,6 +20,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
 class NotificationServiceTest {
@@ -89,5 +90,14 @@ class NotificationServiceTest {
         assertThatCode(() -> service.notifyNewFeedback(
                 new FeedbackResponse(1L, "a@b.com", "m", 3, Instant.now()))).doesNotThrowAnyException();
         assertThatCode(() -> service.notifyLowStockIfCrossed(product(1), 6)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void notifyNewOrder_payloadConstructionThrows_doesNotPropagate() {
+        // Simulate a lazy-init / mapping failure during OrderResponse.from(order)
+        // by making order.getItems() throw before convertAndSend is ever reached.
+        Order bad = spy(new Order());
+        doThrow(new RuntimeException("lazy init failed")).when(bad).getItems();
+        assertThatCode(() -> service.notifyNewOrder(bad)).doesNotThrowAnyException();
     }
 }

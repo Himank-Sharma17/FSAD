@@ -94,6 +94,24 @@ class StompAuthChannelInterceptorTest {
         assertThat(interceptor.preSend(msg, channel)).isSameAs(msg);
     }
 
+    @Test
+    void preSend_sendToTopicDestination_rejected() {
+        StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.SEND);
+        accessor.setDestination("/topic/admin/orders");
+        Message<byte[]> msg = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+        assertThatThrownBy(() -> interceptor.preSend(msg, channel))
+                .isInstanceOf(MessagingException.class)
+                .hasMessageContaining("/topic/admin/orders");
+    }
+
+    @Test
+    void preSend_sendToAppDestination_passesThrough() {
+        StompHeaderAccessor accessor = StompHeaderAccessor.create(StompCommand.SEND);
+        accessor.setDestination("/app/anything");
+        Message<byte[]> msg = MessageBuilder.createMessage(new byte[0], accessor.getMessageHeaders());
+        assertThat(interceptor.preSend(msg, channel)).isSameAs(msg);
+    }
+
     // --- Session-attributes fallback path (no setUser; exercises the new retrieval logic) ---
 
     private Message<byte[]> subscribeMessageViaSessionAttrs(String destination, String role) {

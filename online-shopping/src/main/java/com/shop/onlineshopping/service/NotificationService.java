@@ -30,7 +30,12 @@ public class NotificationService {
     }
 
     public void notifyNewOrder(Order order) {
-        send(ORDERS, OrderResponse.from(order));
+        // Build the payload INSIDE the try so a mapping/lazy-init failure is also swallowed.
+        try {
+            messagingTemplate.convertAndSend(ORDERS, OrderResponse.from(order));
+        } catch (RuntimeException e) {
+            log.warn("Failed to push notification to {}: {}", ORDERS, e.getMessage());
+        }
     }
 
     public void notifyNewFeedback(FeedbackResponse feedback) {

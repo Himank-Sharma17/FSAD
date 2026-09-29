@@ -47,6 +47,11 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
             return authenticate(message, accessor);
         } else if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
             authorizeSubscription(accessor);
+        } else if (StompCommand.SEND.equals(accessor.getCommand())) {
+            String destination = accessor.getDestination();
+            if (destination != null && destination.startsWith("/topic/")) {
+                throw new MessagingException("Clients may not publish to broker destinations: " + destination);
+            }
         }
         return message;
     }
